@@ -21,5 +21,12 @@ module.exports = {
                 }
             ])
         }
+    },
+    'server': {
+        'name': 'Jitsi Configuration',
+        'description': 'Core Configuration',
+        'elements': {
+            'host': new Fields.Text('Jitsi server address', 'Jitsi server address', 'https://meet.jit.si/'),
+        }
     }
 };
