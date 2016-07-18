@@ -1,30 +1,315 @@
+var _ = require('underscore');
+var assert = require('assert');
 
+var RestAPI = require('oae-rest');
+var TestsUtil = require('oae-tests');
+
+var MeetingsDAO = require('oae-jitsi/lib/internal/dao');
 
 describe('Meeting Jitsi', function () {
 
+    var camAnonymousRestCtx = null;
+    var camAdminRestCtx = null;
+
+    beforeEach(function () {
+        camAnonymousRestCtx = TestsUtil.createTenantRestContext(global.oaeTests.tenants.cam.host);
+        camAdminRestCtx = TestsUtil.createTenantAdminRestContext(global.oaeTests.tenants.cam.host);
+    });
+
     describe('Create meeting', function () {
 
-        it('should create successfully the meeting with the proper model');
+        it('should create successfully the meeting with the proper model', function (callback) {
 
-        it('should add the given users and groups to the meeting');
+            TestsUtil.generateTestUsers(camAdminRestCtx, 3, function (err, user) {
+                assert.ok(!err);
 
-        it('should not be successfull with an anonymous user');
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+                var loulou = _.values(user)[2];
 
-        it('should not be successfull with an empty display name');
+                var displayName = 'test-create-displayName';
+                var description = 'test-create-description';
+                var chat = 'true';
+                var contactList = 'false';
+                var visibility = 'public';
+                var managers = [riri.user.id];
+                var members = [fifi.user.id];
 
-        it('should not be successfull with a display name longer than the maximum allowed size');
+                // Stores how many meetings we currently have in db
+                var numMeetingsOrig = 0;
+                MeetingsDAO.iterateAll(null, 1000, function (meetingRows, done) {
+                    if (meetingRows) numMeetingsOrig += meetingRows.length;
 
-        it('should not be successfull with a description longer than the maximum allowed size');
+                    return done();
+                }, function (err) {
+                    assert.ok(!err);
 
-        it('should not be successfull with an invalid visibility');
+                    // Create one new meeting
+                    RestAPI.MeetingsJitsi.createMeeting(loulou.restContext, displayName, description, chat, contactList, visibility, managers, members, function (err, meeting) {
+                        assert.ok(!err);
 
-        it('should not be successfull with an invalid manager id');
+                        assert.equal(meeting.createdBy, loulou.user.id);
+                        assert.equal(meeting.displayName, displayName);
+                        assert.equal(meeting.description, description);
+                        assert.equal(meeting.chat, chat);
+                        assert.equal(meeting.contactList, contactList);
+                        assert.equal(meeting.visibility, visibility);
+                        assert.equal(meeting.resourceType, 'meeting-jitsi');
 
-        it('should not be successfull with an invalid member id');
+                        // Check the meeting members and their roles
+                        RestAPI.MeetingsJitsi.getMembers(loulou.restContext, meeting.id, 0, 1000, function (err, members) {
+                            assert.ok(!err);
 
-        it('should not be successfull with a private user as a member');
+                            var memberIds = _.pluck(_.pluck(members.results, 'profile'), 'id');
 
-        it('should not be successfull with a private group as a member');
+                            assert.equal(memberIds.length, 3);
+                            assert.equal(_.contains(memberIds, riri.user.id), true);
+                            assert.equal(_.contains(memberIds, fifi.user.id), true);
+                            assert.equal(_.contains(memberIds, loulou.user.id), true);
+
+                            var roles = _.pluck(members.results, 'role');
+
+                            assert.equal(roles.length, 3);
+                            assert.equal(_.contains(roles, 'manager'), true);
+                            assert.equal(_.contains(roles, 'member'), true);
+
+                            // Ensure the new number of meetings in db is numMeetingsOrig + 1
+                            var numMeetingAfter = 0;
+                            var hasNewMeeting = false;
+
+                            MeetingsDAO.iterateAll(null, 1000, function (meetingRows, done) {
+                                if (meetingRows) {
+                                    numMeetingAfter += meetingRows.length;
+                                    _.each(meetingRows, function (meetingRow) {
+                                        if (meetingRow.id === meeting.id) hasNewMeeting = true;
+                                    });
+                                }
+
+                                return done();
+                            }, function (err) {
+                                assert.ok(!err);
+                                assert.strictEqual(numMeetingsOrig + 1, numMeetingAfter);
+                                assert.ok(hasNewMeeting);
+
+                                return callback();
+                            });
+                        });
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an anonymous user', function (callback) {
+
+            var displayName = 'test-create-displayName';
+            var description = 'test-create-description';
+            var chat = 'true';
+            var contactList = 'false';
+            var visibility = 'public';
+
+            RestAPI.MeetingsJitsi.createMeeting(camAnonymousRestCtx, displayName, description, chat, contactList, visibility, null, null, function (err) {
+                assert.ok(err);
+                assert.equal(err.code, 401);
+
+                return callback();
+            });
+
+        });
+
+        it('should not be successfull with an empty display name', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+
+                var displayName = null;
+                var description = 'test-create-description';
+                var chat = 'true';
+                var contactList = 'false';
+                var visibility = 'public';
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err) {
+                    assert.ok(err);
+                    assert.equal(err.code, 400);
+
+                    return callback();
+                });
+            });
+
+        });
+
+        it('should not be successfull with a display name longer than the maximum allowed size', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+
+                var displayName = TestsUtil.generateRandomText(100);
+                var description = 'test-create-description';
+                var chat = 'true';
+                var contactList = 'false';
+                var visibility = 'public';
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err) {
+                    assert.ok(err);
+                    assert.equal(err.code, 400);
+
+                    return callback();
+                });
+            });
+
+        });
+
+        it('should not be successfull with a description longer than the maximum allowed size', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+
+                var displayName = 'test-create-displayName';
+                var description = TestsUtil.generateRandomText(1000);
+                var chat = 'true';
+                var contactList = 'false';
+                var visibility = 'public';
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err) {
+                    assert.ok(err);
+                    assert.equal(err.code, 400);
+
+                    return callback();
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid visibility', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+
+                var displayName = 'test-create-displayName';
+                var description = 'test-create-description';
+                var chat = 'true';
+                var contactList = 'false';
+                var visibility = 'not-a-visibility';
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err) {
+                    assert.ok(err);
+                    assert.equal(err.code, 400);
+
+                    return callback();
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid manager id', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+
+                var displayName = 'test-create-displayName';
+                var description = 'test-create-description';
+                var chat = 'true';
+                var contactList = 'false';
+                var visibility = 'public';
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, ['not-an-id'], null, function (err) {
+                    assert.ok(err);
+                    assert.equal(err.code, 400);
+
+                    return callback();
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid member id', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+
+                var displayName = 'test-create-displayName';
+                var description = 'test-create-description';
+                var chat = 'true';
+                var contactList = 'false';
+                var visibility = 'public';
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, ['not-an-id'], function (err) {
+                    assert.ok(err);
+                    assert.equal(err.code, 400);
+
+                    return callback();
+                });
+            });
+
+        });
+
+        it('should not be successfull with a private user as a member', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function(err, users) {
+                assert.ok(!err);
+
+                var riri = _.values(users)[0];
+                var fifi = _.values(users)[1];
+
+                var displayName = 'test-create-displayName';
+                var description = 'test-create-description';
+                var chat = 'true';
+                var contactList = 'false';
+                var visibility = 'public';
+
+                RestAPI.User.updateUser(fifi.restContext, fifi.user.id, {'visibility': 'private'}, function(err) {
+                    assert.ok(!err);
+
+                    RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, [fifi.user.id], [], function(err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 401);
+                        
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with a private group as a member', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function(err, users) {
+                assert.ok(!err);
+
+                var riri = _.values(users)[0];
+                var fifi = _.values(users)[1];
+
+                RestAPI.Group.createGroup(fifi.restContext, 'Group title', 'Group description', 'private', undefined, [], [], function(err, groupObj) {
+                    assert.ok(!err);
+
+                    var displayName = 'test-create-displayName';
+                    var description = 'test-create-description';
+                    var chat = 'true';
+                    var contactList = 'false';
+                    var visibility = 'public';
+
+                    RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, [groupObj.id], [], function(err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 401);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
 
     });
     
