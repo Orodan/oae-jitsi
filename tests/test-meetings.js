@@ -1,5 +1,6 @@
 var _ = require('underscore');
 var assert = require('assert');
+var async = require('async');
 
 var RestAPI = require('oae-rest');
 var TestsUtil = require('oae-tests');
@@ -18,7 +19,7 @@ describe('Meeting Jitsi', function () {
 
     describe('Create meeting', function () {
 
-        it('should create successfully the meeting with the proper model', function (callback) {
+        it('should create successfully the meeting with the proper model and associations', function (callback) {
 
             TestsUtil.generateTestUsers(camAdminRestCtx, 3, function (err, user) {
                 assert.ok(!err);
@@ -95,6 +96,60 @@ describe('Meeting Jitsi', function () {
                             });
                         });
                     });
+                });
+            });
+
+        });
+
+        it('should be successfully added to its members and managers library', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 3, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+                var loulou = _.values(user)[2];
+
+                var displayName = 'test-create-displayName';
+                var description = 'test-create-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'public';
+                var managers = [riri.user.id];
+                var members = [fifi.user.id];
+
+                RestAPI.MeetingsJitsi.createMeeting(loulou.restContext, displayName, description, chat, contactList, visibility, managers, members, function (err, meeting) {
+                    assert.ok(!err);
+
+                    async.parallel([
+                        function checkRiri (done) {
+                            RestAPI.MeetingsJitsi.getMeetingsLibrary(riri.restContext, riri.user.id, function (err, meetings) {
+                                assert.ok(!err);
+                                assert.equal(meetings.results.length, 1);
+                                assert.strictEqual(meetings.results[0].id, meeting.id);
+
+                                return done();
+                            });
+                        },
+                        function checkFifi (done) {
+                            RestAPI.MeetingsJitsi.getMeetingsLibrary(riri.restContext, riri.user.id, function (err, meetings) {
+                                assert.ok(!err);
+                                assert.equal(meetings.results.length, 1);
+                                assert.strictEqual(meetings.results[0].id, meeting.id);
+
+                                return done();
+                            });
+                        },
+                        function checkLoulou (done) {
+                            RestAPI.MeetingsJitsi.getMeetingsLibrary(riri.restContext, riri.user.id, function (err, meetings) {
+                                assert.ok(!err);
+                                assert.equal(meetings.results.length, 1);
+                                assert.strictEqual(meetings.results[0].id, meeting.id);
+
+                                return done();
+                            });
+                        }
+                    ], callback);
                 });
             });
 
@@ -697,13 +752,183 @@ describe('Meeting Jitsi', function () {
 
     describe('Delete meeting', function () {
 
-        it('should successfully delete the meeting from the library');
+        it('should successfully delete the meeting and its members association', function (callback) {
 
-        it('should not be successfull with an invalid meeting id');
+            TestsUtil.generateTestUsers(camAdminRestCtx, 3, function (err, user) {
+                assert.ok(!err);
 
-        it('should successfully be deleted from the system only by managers');
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+                var loulou = _.values(user)[2];
 
-        it('should clean up the associations when the meeting is deleted from the system');
+                var displayName = 'meeting-display-name';
+                var description = 'meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'public';
+                var managers = [fifi.user.id];
+                var members = [loulou.user.id];
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, managers, members, function (err, meeting) {
+                    assert.ok(!err);
+
+                    // Delete the meeting
+                    RestAPI.MeetingsJitsi.deleteMeeting(riri.restContext, meeting.id, function (err) {
+                        assert.ok(!err);
+
+                        // Check the meeting associtations have been correctly deleted
+                        async.parallel([
+                            function ririCheck (done) {
+                                RestAPI.MeetingsJitsi.getMeeting(riri.restContext, meeting.id, function (err) {
+                                    assert.ok(err);
+                                    assert.equal(err.code, 404);
+
+                                    return done();
+                                });
+                            },
+                            function fifiCheck (done) {
+                                RestAPI.MeetingsJitsi.getMeeting(fifi.restContext, meeting.id, function (err) {
+                                    assert.ok(err);
+                                    assert.equal(err.code, 404);
+
+                                    return done();
+                                });
+                            },
+                            function loulouCheck (done) {
+                                RestAPI.MeetingsJitsi.getMeeting(loulou.restContext, meeting.id, function (err) {
+                                    assert.ok(err);
+                                    assert.equal(err.code, 404);
+
+                                    return done();
+                                });
+                            }
+                        ], callback);
+                    });
+                });
+            });
+
+        });
+
+        it('should successfully remove the meeting from its members and managers library', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 3, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+                var loulou = _.values(user)[2];
+
+                var displayName = 'meeting-display-name';
+                var description = 'meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'public';
+                var managers = [fifi.user.id];
+                var members = [loulou.user.id];
+
+                // Create two meetings, one is to delete and the other is to sanity check the library can still be rebuilt and contain the undeleted meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, managers, members, function (err, meeting) {
+                    assert.ok(!err);
+
+                    RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, managers, members, function (err, meeting2) {
+                        assert.ok(!err);
+
+                        // Delete the meeting
+                        RestAPI.MeetingsJitsi.deleteMeeting(riri.restContext, meeting.id, function (err) {
+                            assert.ok(!err);
+
+                            // Check the meeting associtations have been correctly deleted
+                            async.parallel([
+                                function ririCheck (done) {
+                                    RestAPI.MeetingsJitsi.getMeetingsLibrary(riri.restContext, riri.user.id, function (err, meetings) {
+                                        assert.ok(!err);
+                                        assert.equal(meetings.results.length, 1);
+                                        assert.strictEqual(meetings.results[0].id, meeting2.id);
+
+                                        return done();
+                                    });
+                                },
+                                function fifiCheck (done) {
+                                    RestAPI.MeetingsJitsi.getMeetingsLibrary(fifi.restContext, fifi.user.id, function (err, meetings) {
+                                        assert.ok(!err);
+                                        assert.equal(meetings.results.length, 1);
+                                        assert.strictEqual(meetings.results[0].id, meeting2.id);
+
+                                        return done();
+                                    });
+                                },
+                                function loulouCheck (done) {
+                                    RestAPI.MeetingsJitsi.getMeetingsLibrary(loulou.restContext, loulou.user.id, function (err, meetings) {
+                                        assert.ok(!err);
+                                        assert.equal(meetings.results.length, 1);
+                                        assert.strictEqual(meetings.results[0].id, meeting2.id);
+
+                                        return done();
+                                    });
+                                }
+                            ], callback);
+                        });
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid meeting id', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'meeting-display-name';
+                var description = 'meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'public';
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+
+                    RestAPI.MeetingsJitsi.deleteMeeting(riri.restContext, 'not-a-valid-id', function (err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    }); 
+                });
+            });
+
+        });
+
+        it('should not be successfull if a simple member tries to delete the meeting', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+
+                var displayName = 'meeting-display-name';
+                var description = 'meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'public';
+                var members = [fifi.user.id];
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, members, function (err, meeting) {
+                    assert.ok(!err);
+
+                    RestAPI.MeetingsJitsi.deleteMeeting(fifi.restContext, meeting.id, function (err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 401);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
 
     });
 

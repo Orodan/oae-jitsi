@@ -3,7 +3,7 @@ var Fields = require('oae-config/lib/fields');
 module.exports = {
     'title': 'OAE Jitsi Module',
     'visibility': {
-        'name': 'Default Visibility Values',
+        'name': 'Default Visibility Value',
         'description': 'Default visibility setting for new meeting',
         'elements': {
             'meeting': new Fields.List('Meetings Visibility', 'Default visibility for a new meeting', 'public', [
