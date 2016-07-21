@@ -934,19 +934,203 @@ describe('Meeting Jitsi', function () {
 
     describe('Manage meeting access', function () {
 
-        it('should successfully update the meeting access');
+        it('should successfully update the meeting access', function (callback) {
 
-        it('should not be successfull with an invalid meeting id');
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
 
-        it('should not be successfull with an invalid visibility');
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
 
-        it('should not be successfull with an invalid member id');
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+                var managers = [fifi.user.id];
 
-        it('should not be successfull with an invalid manager id');
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, managers, null, function (err, meeting) {
+                    assert.ok(!err);
 
-        it('should not be successfull if the user is not authorized to manage the access of the meeting');
+                    var updates = {};
+                    updates[fifi.user.id] = 'member';
 
-        it('should not be successfull if the update ends up with no manager for the meeting');
+                    RestAPI.MeetingsJitsi.updateMembers(riri.restContext, meeting.id, updates, function (err) {
+                        assert.ok(!err);
+
+                        RestAPI.MeetingsJitsi.getMeeting(fifi.restContext, meeting.id, function (err, meeting) {
+                            assert.ok(!err);
+                            assert.ok(!meeting.isManager);
+
+                            return callback();
+                        }); 
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid meeting id', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+                var managers = [fifi.user.id];
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, managers, null, function (err, meeting) {
+                    assert.ok(!err);
+
+                    var updates = {};
+                    updates[fifi.user.id] = 'member';
+
+                    RestAPI.MeetingsJitsi.updateMembers(riri.restContext, 'not-a-valid-id', updates, function (err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid role', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+                var managers = [fifi.user.id];
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, managers, null, function (err, meeting) {
+                    assert.ok(!err);
+
+                    var updates = {};
+                    updates[fifi.user.id] = 'not-a-valid-role';
+
+                    RestAPI.MeetingsJitsi.updateMembers(riri.restContext, meeting.id, updates, function (err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid principal id', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+                var managers = [fifi.user.id];
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, managers, null, function (err, meeting) {
+                    assert.ok(!err);
+
+                    var updates = {};
+                    updates['not-a-valid-principal-id'] = 'member';
+
+                    RestAPI.MeetingsJitsi.updateMembers(riri.restContext, meeting.id, updates, function (err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull if the user is not authorized to manage the access of the meeting', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 3, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+                var loulou = _.values(user)[2];
+
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+                var managers = [fifi.user.id];
+                var members = [loulou.user.id];
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, managers, members, function (err, meeting) {
+                    assert.ok(!err);
+
+                    var updates = {};
+                    updates[fifi.user.id] = 'member';
+
+                    RestAPI.MeetingsJitsi.updateMembers(loulou.restContext, meeting.id, updates, function (err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 401);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull if the update ends up with no manager for the meeting', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+                var members = [fifi.user.id];
+
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, members, function (err, meeting) {
+                    assert.ok(!err);
+
+                    var updates = {};
+                    updates[riri.user.id] = 'member';
+
+                    RestAPI.MeetingsJitsi.updateMembers(riri.restContext, meeting.id, updates, function (err) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
 
     });
 
