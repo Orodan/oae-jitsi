@@ -1466,11 +1466,149 @@ describe('Meeting Jitsi', function () {
 
     describe('Delete meeting comment', function () {
 
-        it('should successfully delete a comment from a meeting');
+        it('should successfully delete a comment from a meeting', function (callback) {
 
-        it('should not be successfull with an invalid meeting id');
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
 
-        it('should not be successfull with an invalid timestamp');
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(!err);
+                        
+                        RestAPI.MeetingsJitsi.deleteComment(riri.restContext, meeting.id, comment.created, function (err, softDeleted) {
+                            assert.ok(!err);
+
+                            return callback();
+                        });
+                    });
+                });
+            });
+
+        });
+
+        it('should successfully soft delete a comment from a meeting if the comment has replies to it', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment1) {
+                        assert.ok(!err);
+
+                        RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, 'Hello Riri', comment1.created, function (err, comment2) {
+                            assert.ok(!err);
+
+                            RestAPI.MeetingsJitsi.deleteComment(riri.restContext, meeting.id, comment1.created, function (err, softDeleted) {
+                                assert.ok(!err);
+                                assert.ok(softDeleted.deleted);
+                                assert.ok(!softDeleted.body);
+
+                                return callback();
+                            });
+                        });
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid meeting id', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(!err);
+                        
+                        RestAPI.MeetingsJitsi.deleteComment(riri.restContext, 'not-a-valid-meeting-id', comment.created, function (err, softDeleted) {
+                            assert.ok(err);
+                            assert.equal(err.code, 400);
+
+                            return callback();
+                        });
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid timestamp', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(!err);
+                        
+                        RestAPI.MeetingsJitsi.deleteComment(riri.restContext, meeting.id, 'not-a-valid-comment-timestamp', function (err, softDeleted) {
+                            assert.ok(err);
+                            assert.equal(err.code, 400);
+
+                            return callback();
+                        });
+                    });
+                });
+            });
+
+        });
 
     });
 
