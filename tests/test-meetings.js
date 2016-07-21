@@ -1136,23 +1136,335 @@ describe('Meeting Jitsi', function () {
 
     describe('Comment meeting', function () {
 
-        it('should successfully comment the meeting');
+        it('should successfully comment the meeting with the proper model', function (callback) {
 
-        it('should not be successfull with an invalid meeting id');
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
 
-        it('should not be successfull with an empty body');
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
 
-        it('should not be successfull with an non-existing reply-to timestamp');
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
 
-        it('should not be successfull with a body longer thant the maximum allowed size');
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(!err);
+                        assert.equal(comment.createdBy.id, riri.user.id);
+                        assert.equal(comment.level, 0);
+                        assert.equal(comment.body, body);
+                        assert.equal(comment.messageBoxId, meeting.id);
+                        assert.ok(comment.id);
+                        assert.ok(comment.created);
 
-        it('should not be successfull with an anonymous user');
+                        return callback();
+                    });
+                });
+            });
 
-        it('should not be successfull with a non-member user');
+        });
+
+        it('should successfully comment the meeting even when it is a response to another comment', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+                
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+                var members = [fifi.user.id]
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, members, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(!err);
+                        
+                        // Add a response to the previous comment
+                        RestAPI.MeetingsJitsi.createComment(fifi.restContext, meeting.id, 'Hello riri', comment.created, function (err, comment) {
+                            assert.ok(!err);
+
+                            return callback();
+                        });
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an invalid meeting id', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, 'not-a-valid-meeting-id', body, replyTo, function (err, comment) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an empty body', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = '';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an non-existing reply-to timestamp', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello World';
+                    var replyTo = 'not-an-existing-reply-to-timestamp';
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with a body longer thant the maximum allowed size', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = TestsUtil.generateRandomText(10000);
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(riri.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(err);
+                        assert.equal(err.code, 400);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with an anonymous user', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 1, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(camAnonymousRestCtx, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(err);
+                        assert.equal(err.code, 401);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should not be successfull with a non-member user on a private meeting', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'private';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(fifi.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(err);
+                        assert.equal(err.code, 401);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should be successfull with a non-member user on a public meeting', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'public';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(fifi.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(!err);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
+
+        it('should be successfull with a non-member user on a loggedin meeting', function (callback) {
+
+            TestsUtil.generateTestUsers(camAdminRestCtx, 2, function (err, user) {
+                assert.ok(!err);
+
+                var riri = _.values(user)[0];
+                var fifi = _.values(user)[1];
+
+                var displayName = 'my-meeting-display-name';
+                var description = 'my-meeting-description';
+                var chat = true;
+                var contactList = false;
+                var visibility = 'loggedin';
+
+                // Create a meeting
+                RestAPI.MeetingsJitsi.createMeeting(riri.restContext, displayName, description, chat, contactList, visibility, null, null, function (err, meeting) {
+                    assert.ok(!err);
+                    
+                    // Add a comment
+                    var body = 'Hello world';
+                    var replyTo = null;
+
+                    RestAPI.MeetingsJitsi.createComment(fifi.restContext, meeting.id, body, replyTo, function (err, comment) {
+                        assert.ok(!err);
+
+                        return callback();
+                    });
+                });
+            });
+
+        });
 
     });
 
-    describe('Delete comment meeting', function () {
+    describe('Delete meeting comment', function () {
 
         it('should successfully delete a comment from a meeting');
 
