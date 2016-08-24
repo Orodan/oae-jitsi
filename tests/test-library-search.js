@@ -20,9 +20,10 @@ describe('Meeting Library Search', function () {
     describe('Library search', function () {
 
         it('verify searching through a meeting library', function (callback) {
-            TestsUtil.generateTestUsers(camAdminRestContext, 1, function (err, users) {
+
+            TestsUtil.generateTestUsers(camAdminRestContext, 1, function (err, user) {
                 assert.ok(!err);
-                var simong = _.values(users)[0];
+                var simong = _.values(user)[0];
 
                 // Create 2 meetings
                 var randomTextA = TestsUtil.generateRandomText(25);
@@ -50,6 +51,7 @@ describe('Meeting Library Search', function () {
                     });
                 });
             });
+            
         });
 
     });
