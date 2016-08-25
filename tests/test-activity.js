@@ -33,7 +33,7 @@ describe('Meeting Activity', function () {
                 var simon = _.values(user)[0];
 
                 // Create a meeting
-                var randomText = TestsUtil.generateRandomText(25);                
+                var randomText = TestsUtil.generateRandomText(25);
                 RestAPI.MeetingsJitsi.createMeeting(simon.restContext, randomText, randomText, false, false, 'private', null, null, function (err, meeting) {
                     assert.ok(!err);
 
@@ -61,7 +61,7 @@ describe('Meeting Activity', function () {
                 var simon = _.values(user)[0];
 
                 // Create a meeting
-                var randomText = TestsUtil.generateRandomText(25);                
+                var randomText = TestsUtil.generateRandomText(25);
                 RestAPI.MeetingsJitsi.createMeeting(simon.restContext, randomText, randomText, false, false, 'private', null, null, function (err, meeting) {
                     assert.ok(!err);
 
@@ -96,7 +96,7 @@ describe('Meeting Activity', function () {
                 var nico = _.values(users)[1];
 
                 // Create a meeting
-                var randomText = TestsUtil.generateRandomText(25);                
+                var randomText = TestsUtil.generateRandomText(25);
                 RestAPI.MeetingsJitsi.createMeeting(simon.restContext, randomText, randomText, false, false, 'private', null, null, function (err, meeting) {
                     assert.ok(!err);
 
@@ -133,7 +133,7 @@ describe('Meeting Activity', function () {
                 var nico = _.values(users)[1];
 
                 // Create a meeting
-                var randomText = TestsUtil.generateRandomText(25);                
+                var randomText = TestsUtil.generateRandomText(25);
                 RestAPI.MeetingsJitsi.createMeeting(simon.restContext, randomText, randomText, false, false, 'private', null, [nico.user.id], function (err, meeting) {
                     assert.ok(!err);
 
@@ -160,7 +160,7 @@ describe('Meeting Activity', function () {
                     });
                 });
             });
-            
+
         });
 
         it('verify posting a message in a meeting results in an activity being generated', function (callback) {
@@ -205,7 +205,7 @@ describe('Meeting Activity', function () {
 
         /**
          * Create one public and one private user
-         * 
+         *
          * @param  {RestContext}    restCtx                         The context with which to create the user and content
          * @param  {Function}       callback                        Standard callback function
          * @param  {User}           callback.privateUser            The created private user
@@ -245,7 +245,7 @@ describe('Meeting Activity', function () {
             createPrivateAndPublicUsers(camAdminRestContext, function (privateUser, publicUser) {
 
                 // Create a meeting
-                var randomText = TestsUtil.generateRandomText(5);                
+                var randomText = TestsUtil.generateRandomText(5);
                 RestAPI.MeetingsJitsi.createMeeting(privateUser.restContext, randomText, randomText, false, false, 'private', null, [publicUser.user.id], function (err, meeting) {
                     assert.ok(!err);
 
@@ -287,7 +287,7 @@ describe('Meeting Activity', function () {
             createPrivateAndPublicUsers(camAdminRestContext, function (privateUser, publicUser) {
 
                 // Create a meeting
-                var randomText = TestsUtil.generateRandomText(5);                
+                var randomText = TestsUtil.generateRandomText(5);
                 RestAPI.MeetingsJitsi.createMeeting(privateUser.restContext, randomText, randomText, false, false, 'private', null, null, function (err, meeting) {
                     assert.ok(!err);
 
@@ -342,7 +342,7 @@ describe('Meeting Activity', function () {
                     var randomUser = _.values(user)[0];
 
                     // Create a meeting
-                    var randomText = TestsUtil.generateRandomText(5);                
+                    var randomText = TestsUtil.generateRandomText(5);
                     RestAPI.MeetingsJitsi.createMeeting(privateUser.restContext, randomText, randomText, false, false, 'private', [publicUser.user.id], [randomUser.user.id], function (err, meeting) {
                         assert.ok(!err);
 
@@ -353,7 +353,7 @@ describe('Meeting Activity', function () {
                             var updates = {'displayName': 'new-display-name'};
                             RestAPI.MeetingsJitsi.updateMeeting(privateUser.restContext, meeting.id, updates, function (err, meeting) {
                                 assert.ok(!err);
-                                
+
                                 // Collect a second time the email queue
                                 EmailTestsUtil.collectAndFetchAllEmails(function (emails) {
 
@@ -389,12 +389,12 @@ describe('Meeting Activity', function () {
 
         });
 
-        it('verify an email is sent to the meeting members when someone posts a message', function (callback) {
+        it('verify an email is sent to the meeting members when someone posts a message and privacy is respected', function (callback) {
 
             createPrivateAndPublicUsers(camAdminRestContext, function (privateUser, publicUser) {
 
                 // Create a meeting
-                var randomText = TestsUtil.generateRandomText(5);                
+                var randomText = TestsUtil.generateRandomText(5);
                 RestAPI.MeetingsJitsi.createMeeting(privateUser.restContext, randomText, randomText, false, false, 'private', [publicUser.user.id], null, function (err, meeting) {
                     assert.ok(!err);
 
@@ -404,7 +404,7 @@ describe('Meeting Activity', function () {
                         // Post a comment
                         RestAPI.MeetingsJitsi.createComment(privateUser.restContext, meeting.id, 'Hello world !', null, function (err) {
                             assert.ok(!err);
-                            
+
                             // Collect a second time the email queue
                             EmailTestsUtil.collectAndFetchAllEmails(function (emails) {
 
